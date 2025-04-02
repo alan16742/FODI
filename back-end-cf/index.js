@@ -1,9 +1,11 @@
 /**
+ * CACHE_TTL: 列表请求的缓存时间，单位秒
  * EXPOSE_PATH：暴露路径，如全盘展示请留空，否则按 '/媒体/音乐' 的格式填写
  * ONEDRIVE_REFRESHTOKEN: refresh_token
  * PASSWD_FILENAME: 密码文件名
  * PROTECTED_LAYERS: EXPOSE_PATH 目录密码防护层数，防止猜测目录，默认 -1 为关闭，类似 '/Applications' 需要保护填写为 2（保护 EXPOSE_PATH 及其一级子目录），开启需在 EXPORSE_PATH 目录的 PASSWORD_FILENAME 文件中填写密码
  */
+const CACHE_TTL = 0;
 const EXPOSE_PATH = '';
 const ONEDRIVE_REFRESHTOKEN = '';
 const PASSWD_FILENAME = '.password';
@@ -33,6 +35,36 @@ const OAUTH = {
 
 export default {
   async fetch(request, env, ctx) {
+    async function sha256(message) {
+      const msgBuffer = await new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      return [...new Uint8Array(hashBuffer)]
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    if (request.method === 'POST' && CACHE_TTL !== 0) {
+      const body = await request.clone().text();
+      const hash = await sha256(body);
+      const cacheUrl = new URL(request.url);
+      cacheUrl.pathname = '/posts' + cacheUrl.pathname + hash;
+      const cacheKey = new Request(cacheUrl.toString(), {
+        headers: request.headers,
+        method: 'GET',
+      });
+
+      const cache = caches.default;
+      let response = await cache.match(cacheKey);
+      const cacheModifiedTime = new Date(response?.headers.get('Last-Modified')).getTime() || 0;
+      const isExpired = cacheModifiedTime === 0 || (Date.now() - cacheModifiedTime) / 1000 > CACHE_TTL;
+
+      if (isExpired) {
+        response = await handleRequest(request, env);
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      }
+
+      return response;
+    }
     return handleRequest(request, env);
   }
 }
