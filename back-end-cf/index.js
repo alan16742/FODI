@@ -43,7 +43,7 @@ export default {
         .join('');
     }
 
-    if (request.method === 'POST' && CACHE_TTL !== 0) {
+    if (request.method === 'POST' && CACHE_TTL) {
       const body = await request.clone().text();
       const hash = await sha256(body);
       const cacheUrl = new URL(request.url);
@@ -364,11 +364,12 @@ async function handleWebdav(filePath, request, WEBDAV) {
     });
   }
 
+  if (request.method === 'HEAD') return handleHead(filePath);
+
   const handlers = {
     COPY: () => handleCopyMove(filePath, 'COPY', request.headers.get('Destination')),
     MOVE: () => handleCopyMove(filePath, 'MOVE', request.headers.get('Destination')),
     DELETE: () => handleDelete(filePath),
-    HEAD: () => handleHead(filePath),
     MKCOL: () => handleMkcol(filePath),
     PUT: () => handlePut(filePath, request),
     PROPFIND: () => handlePropfind(filePath),
@@ -498,11 +499,11 @@ async function handleHead(filePath) {
   const data = await res.json();
 
   return new Response(null, {
-    status: res.status,
-    headers: res.ok ? {
+    status: data?.file ? 200 : 403,
+    headers: data?.file ? {
       'Content-Length': data.size,
-      'Content-Type': data?.file?.mimeType,
-      'date': new Date(data.lastModifiedDateTime).toUTCString()
+      'Content-Type': data.file.mimeType,
+      'Last-Modified': new Date(data.lastModifiedDateTime).toUTCString()
     } : {}
   });
 }
