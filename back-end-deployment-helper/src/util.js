@@ -8,10 +8,9 @@ export const generateCode = async (
   refreshToken,
   exposePath,
   passwordFilename,
-  protectedLayers
+  protectedLayers,
 ) => {
-  const constants = 
-`const localEnv = {
+  const constants = `const localEnv = {
   PROTECTED: {
     EXPOSE_PATH: "${exposePath}",
     PASSWD_FILENAME: "${passwordFilename}",
@@ -36,15 +35,13 @@ export const generateCode = async (
 `;
 
   const template = await fetch(
-    `${reverseProxy}?url=https://raw.githubusercontent.com/vcheckzen/FODI/refs/heads/master/back-end-cf/index.js`
+    `${reverseProxy}?url=https://raw.githubusercontent.com/vcheckzen/FODI/refs/heads/master/back-end-cf/index.js`,
   )
     .then((data) => data.text())
     .catch(() => '');
 
   const lines = template.split('\n');
-  const targetIndex = lines.findIndex((line) =>
-    line.trim().startsWith("const localEnv")
-  );
+  const targetIndex = lines.findIndex((line) => line.trim().startsWith('const localEnv'));
 
   if (targetIndex !== -1) {
     lines[targetIndex] = constants;

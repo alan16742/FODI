@@ -1,4 +1,12 @@
-{
+ {
+  // !!! Notice, Don't fill in the comments | 注意，注释内容不要填写 !!!
+  // The following variables need to be configured manually, type is secret
+  // you can use the web or wrangler to configure them
+  // 以下变量需要手动配置，类型为秘钥，你可以自行决定使用 web 或 wrangler 来配置
+  // By Web: https://dash.cloudflare.com/?to=/:account/workers/services/view/fodi/production/settings#variables
+  // By Wrangler: npx wrangler secret put KEYNAME
+  // 1. name: REFRESHTOEKN | value: <~ https://alist.nn.ci/tool/onedrive/request.html
+  // 2. name: WEBDAV | value: yourUsername:yourPassword
   "name": "fodi",
   "main": "back-end-cf/index.js",
   "compatibility_date": "2025-04-10",
@@ -9,11 +17,6 @@
       "id": "" // <~ https://dash.cloudflare.com/?to=/:account/workers/kv/namespaces
     }
   ],
-  // !!! Notice|注意 !!!
-  // https://dash.cloudflare.com/?to=/:account/workers/services/view/fodi/production/settings#variables
-  // The following variables need to be configured manually, type is secret | 以下变量需要手动配置，类型为秘钥
-  // 1. name: REFRESHTOEKN | value: get from https://alist.nn.ci/tool/onedrive/request.html
-  // 2. name: WEBDAV | value: yourUsername:yourPassword
   "vars": {
     // If OneDrive is not operated by Microsoft, modify the settings manually | 世纪互联下面全部要改
     "OAUTH": {

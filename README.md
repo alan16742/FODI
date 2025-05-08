@@ -26,6 +26,7 @@ git clone, edit wrangler.jsonc
 ```
 npm i wrangler
 npx wrangler deploy
+npx wrangler secret put REFRESHTOEKN
 ```
 
 ## 功能

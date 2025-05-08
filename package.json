@@ -1,0 +1,10 @@
+{
+  "scripts": {
+    "build": "prettier . --write && node front-end/minify.js"
+  },
+  "devDependencies": {
+    "html-minifier-terser": "^7.2.0",
+    "prettier": "^3.5.3"
+  },
+  "type": "module"
+}

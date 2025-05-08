@@ -7,8 +7,7 @@ import { generateCode } from './util';
 
 const defaultConfig = {
   replyURL: 'http://localhost/onedrive-login',
-  publicParams:
-    '&scope=offline_access%20User.Read%20Files.ReadWrite.All&response_type=code',
+  publicParams: '&scope=offline_access%20User.Read%20Files.ReadWrite.All&response_type=code',
   version: {
     cn: {
       api: 'https://login.partner.microsoftonline.cn',
@@ -64,7 +63,7 @@ function App() {
     const config = defaultConfig.version[version];
     window.open(
       `${config.api}/common/oauth2/v2.0/authorize?client_id=` +
-        `${clientID}${defaultConfig.publicParams}&redirect_uri=${replyURL}`
+        `${clientID}${defaultConfig.publicParams}&redirect_uri=${replyURL}`,
     );
   };
 
@@ -99,7 +98,7 @@ function App() {
 
     fetch(
       `${defaultConfig.reverseProxyURL}?url=${defaultConfig.version[version].api}/common/oauth2/v2.0/token`,
-      requestOptions
+      requestOptions,
     )
       .then((response) => response.json())
       .then((data) => {
@@ -118,7 +117,7 @@ function App() {
             data.refresh_token,
             exposedPath || '',
             passwordFilename || '.password',
-            protectedLayers || '-1'
+            protectedLayers || '-1',
           )
             .then((code) => setCode(code))
             .catch((err) => setError(err.message));
@@ -167,11 +166,7 @@ function App() {
           </div>
 
           <div className="input version">
-            <Select
-              size="large"
-              defaultValue="select"
-              onChange={(v) => changeVersion(v)}
-            >
+            <Select size="large" defaultValue="select" onChange={(v) => changeVersion(v)}>
               <Option value="select">请选择版本</Option>
               <Option value="cn">世纪互联</Option>
               <Option value="other">其他版本</Option>
