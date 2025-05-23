@@ -11,15 +11,19 @@
     }
   ],
   "vars": {
+    // !!! Warning | 警告 !!!
+    // https://dash.cloudflare.com/?to=/:account/workers/services/view/fodi/production/settings#variables
+    // If comment contains !!!<~ tag, modify in Cloudflare Dashboard | 含 !!!<~ 标记的配置项请在Cloudflare控制台修改
+    // ------------------------------------------------------
+    // Optional Feature | 可选功能
+    // 1. WEBDAV
+    // Navigate to the DashBoard to create a new secret. Name it WEBDAV, with its value formatted as username:password
+    // 前往控制台新建秘钥，名称为 WEBDAV ，值形如 用户名:密码
+    // ------------------------------------------------------ 
     // If OneDrive is not Microsoft-operated (e.g. 21Vianet), modify these settings
     // 世纪互联需修改下列参数
     "OAUTH": {
-      // !!! Notice !!!
-      // https://dash.cloudflare.com/?to=/:account/workers/services/view/fodi/production/settings#variables
-      // If you are using the command line deployment, you can fill in here, otherwise go to the above website to fill in
-      // 如果你是使用命令行部署可以在此填入，否则前往上方网站填写
-      // ------------------------------------------------------
-      "refreshToken": "", // <~ https://alist.nn.ci/tool/onedrive/request.html
+      "refreshToken": "", // !!!<~ https://alist.nn.ci/tool/onedrive/request.html
       "clientId": "0a2991a3-1674-4334-8561-671cc7349960",
       "clientSecret": "uw67Q~TCMqdJyH35hlcHHclv~mhNOGx.jfPFm",
       "redirectUri": "https://alist.nn.ci/tool/onedrive/callback",

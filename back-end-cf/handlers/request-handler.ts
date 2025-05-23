@@ -89,7 +89,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
   }
 
   const davMethods = ['COPY', 'DELETE', 'HEAD', 'MKCOL', 'MOVE', 'PROPFIND', 'PUT'];
-  if (davMethods.includes(request.method) && env.WEBDAV) {
+  if (davMethods.includes(request.method)) {
     return handleWebdav(file, request, env.WEBDAV);
   } else {
     return new Response('Method Not Allowed', { status: 405 });

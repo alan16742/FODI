@@ -12,7 +12,7 @@ import {
 export async function handleWebdav(
   filePath: string,
   request: Request,
-  davCredentials: string,
+  davCredentials: string | undefined,
 ): Promise<Response> {
   const davAuth = authenticateWebdav(request.headers.get('Authorization'), davCredentials);
   if (!davAuth) {
