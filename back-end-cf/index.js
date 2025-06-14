@@ -276,7 +276,7 @@ function createResourceXml(encodedParent, resource, isDirectory) {
 
 // back-end-cf/services/davMethod.ts
 async function handlePropfind(filePath) {
-  const { path: fetchPath } = davPathSplit(filePath);
+  const { path: fetchPath, parent } = davPathSplit(filePath);
   const allFiles = [];
   const skipTokens = [];
   const currentTokens = await fetchSaveSkipToken(fetchPath);
@@ -304,6 +304,7 @@ async function handlePropfind(filePath) {
     ],
   };
   const batchResult = await fetchBatchRes(batchRequest);
+  batchResult.responses.sort((a, b) => parseInt(a.id) - parseInt(b.id));
   for (const resp of batchResult.responses) {
     if (resp.status !== 200) {
       return {
@@ -329,7 +330,8 @@ async function handlePropfind(filePath) {
     }
   }
   await fetchSaveSkipToken(fetchPath, skipTokens);
-  const responseXML = createPropfindXml(fetchPath, allFiles);
+  const propfindPath = allFiles[0]?.file ? parent : fetchPath;
+  const responseXML = createPropfindXml(propfindPath, allFiles);
   return { davXml: responseXML, davStatus: 207 };
 }
 async function handleCopyMove(filePath, method, destination) {
