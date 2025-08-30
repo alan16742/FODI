@@ -1,5 +1,5 @@
-import { OAUTH, PROTECTED, fetchFilesRes, DriveItem, UploadPayload } from '../types/apiType';
-import { fetchWithAuth, fetchBatchRes } from '../services/utils';
+import { runtimeEnv, fetchFilesRes, DriveItem, UploadPayload } from '../types/apiType';
+import { fetchWithAuth, fetchBatchRes } from './utils';
 
 export async function fetchFiles(
   path: string,
@@ -9,9 +9,9 @@ export async function fetchFiles(
   const parent = path || '/';
 
   if (path === '/') path = '';
-  if (path || PROTECTED.EXPOSE_PATH) {
+  if (path || runtimeEnv.PROTECTED.EXPOSE_PATH) {
     // if PROTECTED.EXPOSE_PATH + path equals to an empty string, ':' will lead to an error.
-    path = ':' + encodeURIComponent(PROTECTED.EXPOSE_PATH + path) + ':';
+    path = ':' + encodeURIComponent(runtimeEnv.PROTECTED.EXPOSE_PATH + path) + ':';
   }
   const expand = [
     '/children?select=name,size,lastModifiedDateTime,@microsoft.graph.downloadUrl',
@@ -20,7 +20,7 @@ export async function fetchFiles(
     orderby ? `&orderby=${encodeURIComponent(orderby)}` : '',
     skipToken ? `&skiptoken=${skipToken}` : '',
   ].join('');
-  const uri = OAUTH.apiUrl + path + expand;
+  const uri = runtimeEnv.OAUTH.apiUrl + path + expand;
 
   const pageRes: DriveItem = await (await fetchWithAuth(uri)).json();
   if (pageRes.error) {
@@ -43,7 +43,7 @@ export async function fetchFiles(
         lastModifiedDateTime: file.lastModifiedDateTime,
         url: file['@microsoft.graph.downloadUrl'],
       }))
-      .filter((file) => file.name !== PROTECTED.PASSWD_FILENAME),
+      .filter((file) => file.name !== runtimeEnv.PROTECTED.PASSWD_FILENAME),
   };
 }
 
@@ -53,7 +53,7 @@ export async function fetchUploadLinks(fileList: UploadPayload[]) {
       id: `${index + 1}`,
       method: file['fileSize'] ? 'POST' : 'PUT',
       url: `/me/drive/root:${encodeURI(
-        PROTECTED.EXPOSE_PATH + file['remotePath'],
+        runtimeEnv.PROTECTED.EXPOSE_PATH + file['remotePath'],
       )}${file['fileSize'] ? ':/createUploadSession' : ':/content'}`,
       headers: { 'Content-Type': 'application/json' },
       body: {},
@@ -75,40 +75,27 @@ export async function downloadFile(filePath: string, stream?: boolean, format?: 
     throw new Error('unsupported target format');
   }
 
-  filePath = encodeURIComponent(`${PROTECTED.EXPOSE_PATH}${filePath}`);
+  filePath = encodeURIComponent(`${runtimeEnv.PROTECTED.EXPOSE_PATH}${filePath}`);
   const uri =
-    `${OAUTH.apiUrl}:${filePath}:/content` +
+    `${runtimeEnv.OAUTH.apiUrl}:${filePath}:/content` +
     (format ? `?format=${format}` : '') +
     (format === 'jpg' ? '&width=30000&height=30000' : '');
 
   const downloadResp = await fetchWithAuth(uri, { redirect: 'manual' });
   const downloadUrl = downloadResp.headers.get('Location');
-  const downloadReturnHeaders = new Headers();
-  downloadReturnHeaders.set('Last-Modified', new Date().toUTCString());
 
   if (!downloadUrl) {
     return new Response(null, { status: downloadResp.status });
   }
 
-  if (!stream) {
-    downloadReturnHeaders.set('Location', downloadUrl);
-    return new Response(null, {
-      status: 302,
-      headers: downloadReturnHeaders,
-    });
+  // proxy download
+  if (stream) {
+    return fetch(downloadUrl);
   }
 
-  const fileResp = await fetch(downloadUrl);
-  if (fileResp) {
-    const forwardHeaders = ['Content-Type', 'Content-Length'];
-    forwardHeaders.forEach((header) => {
-      const value = fileResp.headers.get(header);
-      if (value) downloadReturnHeaders.set(header, value);
-    });
-  }
-
-  return new Response(fileResp.body, {
-    status: fileResp.status,
-    headers: downloadReturnHeaders,
+  // direct download
+  return new Response(null, {
+    status: 302,
+    headers: { Location: downloadUrl },
   });
 }

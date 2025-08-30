@@ -75,7 +75,7 @@ async function fetchSaveSkipToken(path, tokensToSave) {
   path = path.toLocaleLowerCase();
   const skipTokenString = await FODI_CACHE.get('skip_token');
   const skipTokenData = skipTokenString ? JSON.parse(skipTokenString) : {};
-  const currentTokens = skipTokenData[path]?.split(',') || [];
+  const currentTokens = skipTokenString ? skipTokenData[path]?.split(',') : [];
   const tokenChanged = tokensToSave && currentTokens.join(',') !== tokensToSave.join(',');
   if (tokenChanged) {
     skipTokenData[path] = tokensToSave.join(',');
@@ -224,7 +224,7 @@ function authenticateWebdav(davAuthHeader, davCredentials) {
   );
 }
 
-// back-end-cf/services/dav.ts
+// back-end-cf/services/davUtils.ts
 function davPathSplit(filePath) {
   filePath = filePath.includes('://') ? decodeURIComponent(new URL(filePath).pathname) : filePath;
   if (!filePath) filePath = '/';
@@ -273,17 +273,22 @@ function createResourceXml(encodedParent, resource, isDirectory) {
   </d:response>
 `;
 }
+function buildUriPath(filePath, exposePath, apiUrl) {
+  const { path } = davPathSplit(filePath);
+  const itemPath = exposePath + path;
+  const uri = itemPath === '/' ? apiUrl : `${apiUrl}:${encodeURIComponent(itemPath)}:`;
+  return { path, uri };
+}
 
 // back-end-cf/services/davMethod.ts
 async function handlePropfind(filePath) {
-  const { path: fetchPath, parent } = davPathSplit(filePath);
+  const { path, parent } = davPathSplit(filePath);
   const allFiles = [];
   const skipTokens = [];
-  const currentTokens = await fetchSaveSkipToken(fetchPath);
-  const uriPath =
-    fetchPath === `/` ? PROTECTED.EXPOSE_PATH : `:${PROTECTED.EXPOSE_PATH}${fetchPath}:`;
+  const currentTokens = await fetchSaveSkipToken(path);
+  const itemPath = path === `/` ? PROTECTED.EXPOSE_PATH : `:${PROTECTED.EXPOSE_PATH}${path}:`;
   const select = '?select=name,size,lastModifiedDateTime,file';
-  const baseUrl = `/me/drive/root${uriPath}/children${select}&top=1000`;
+  const baseUrl = `/me/drive/root${itemPath}/children${select}&top=1000`;
   const createListRequest = (id, skipToken) => ({
     id,
     method: 'GET',
@@ -296,7 +301,7 @@ async function handlePropfind(filePath) {
       {
         id: '1',
         method: 'GET',
-        url: `/me/drive/root${uriPath}${select}`,
+        url: `/me/drive/root${itemPath}${select}`,
         headers: { 'Content-Type': 'application/json' },
         body: {},
       },
@@ -309,7 +314,7 @@ async function handlePropfind(filePath) {
   for (const resp of batchResult.responses) {
     if (resp.status !== 200) {
       return {
-        davXml: createReturnXml(fetchPath, resp.status, 'Failed to fetch files'),
+        davXml: createReturnXml(path, resp.status, 'Failed to fetch files'),
         davStatus: resp.status,
       };
     }
@@ -330,8 +335,8 @@ async function handlePropfind(filePath) {
       skipTokens.push(skipToken);
     }
   }
-  await fetchSaveSkipToken(fetchPath, skipTokens);
-  const propfindPath = allFiles[0]?.file ? parent : fetchPath;
+  await fetchSaveSkipToken(path, skipTokens);
+  const propfindPath = allFiles[0]?.file ? parent : path;
   const responseXML = createPropfindXml(propfindPath, allFiles);
   return { davXml: responseXML, davStatus: 207 };
 }
@@ -342,11 +347,9 @@ async function handleCopyMove(filePath, method, destination) {
       davStatus: 400,
     };
   }
-  const { parent, path: uriPath } = davPathSplit(filePath);
-  const uri =
-    `${OAUTH.apiUrl}:${encodeURIComponent(PROTECTED.EXPOSE_PATH + uriPath)}` +
-    (method === 'COPY' ? ':/copy' : '');
+  const { path, uri: initialUri } = buildUriPath(filePath, PROTECTED.EXPOSE_PATH, OAUTH.apiUrl);
   const { parent: newParent, tail: newTail } = davPathSplit(destination);
+  const uri = initialUri + (method === 'COPY' ? '/copy' : '');
   const resp = await fetchWithAuth(uri, {
     method: method === 'COPY' ? 'POST' : 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -358,23 +361,19 @@ async function handleCopyMove(filePath, method, destination) {
     }),
   });
   const davStatus = resp.status === 200 ? 201 : resp.status;
-  const responseXML =
-    davStatus === 201 ? null : createReturnXml(uriPath, davStatus, resp.statusText);
+  const responseXML = davStatus === 201 ? null : createReturnXml(path, davStatus, resp.statusText);
   return { davXml: responseXML, davStatus };
 }
 async function handleDelete(filePath) {
-  const uriPath = davPathSplit(filePath).path;
-  const uri = `${OAUTH.apiUrl}:${encodeURIComponent(PROTECTED.EXPOSE_PATH + uriPath)}`;
+  const { path, uri } = buildUriPath(filePath, PROTECTED.EXPOSE_PATH, OAUTH.apiUrl);
   const res = await fetchWithAuth(uri, { method: 'DELETE' });
   const davStatus = res.status;
-  const responseXML =
-    davStatus === 204 ? null : createReturnXml(uriPath, davStatus, res.statusText);
+  const responseXML = davStatus === 204 ? null : createReturnXml(path, davStatus, res.statusText);
   return { davXml: responseXML, davStatus };
 }
 async function handleHead(filePath) {
   const uri = [
-    OAUTH.apiUrl,
-    `:${encodeURIComponent(PROTECTED.EXPOSE_PATH + davPathSplit(filePath).path)}`,
+    buildUriPath(filePath, PROTECTED.EXPOSE_PATH, OAUTH.apiUrl).uri,
     '?select=size,file,folder,lastModifiedDateTime',
   ].join('');
   const resp = await fetchWithAuth(uri);
@@ -393,7 +392,7 @@ async function handleHead(filePath) {
 }
 async function handleMkcol(filePath) {
   const { parent, tail } = davPathSplit(filePath);
-  const uri = `${OAUTH.apiUrl}:${encodeURIComponent(PROTECTED.EXPOSE_PATH + parent)}:/children`;
+  const uri = buildUriPath(parent, PROTECTED.EXPOSE_PATH, OAUTH.apiUrl).uri + '/children';
   const res = await fetchWithAuth(uri, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -408,60 +407,82 @@ async function handleMkcol(filePath) {
   return { davXml: responseXML, davStatus };
 }
 async function handlePut(filePath, request) {
+  const simpleUploadLimit = 4 * 1024 * 1024;
+  const chunkSize = 60 * 1024 * 1024;
   const contentLength = request.headers.get('Content-Length') || '0';
-  const fileLength = parseInt(contentLength);
-  const body = await request.arrayBuffer();
-  const uploadList = [{ remotePath: filePath, fileSize: fileLength }];
-  const uploadUrl = (await fetchUploadLinks(uploadList)).files[0].uploadUrl;
+  const fileSize = parseInt(contentLength);
+  const fileBuffer = await request.arrayBuffer();
+  if (fileSize <= simpleUploadLimit) {
+    const uri2 = buildUriPath(filePath, PROTECTED.EXPOSE_PATH, OAUTH.apiUrl).uri + '/content';
+    const res = await fetchWithAuth(uri2, {
+      method: 'PUT',
+      body: fileBuffer,
+    });
+    if (!res.ok) {
+      return {
+        davXml: createReturnXml(filePath, res.status, res.statusText),
+        davStatus: res.status,
+      };
+    }
+    return { davXml: null, davStatus: 201 };
+  }
+  const uri =
+    buildUriPath(filePath, PROTECTED.EXPOSE_PATH, OAUTH.apiUrl).uri + '/createUploadSession';
+  const uploadSessionRes = await fetchWithAuth(uri, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      item: { '@microsoft.graph.conflictBehavior': 'replace' },
+    }),
+  });
+  const { uploadUrl } = await uploadSessionRes.json();
   if (!uploadUrl) {
     return {
-      davXml: createReturnXml(filePath, 500, 'Failed to get upload URL'),
+      davXml: createReturnXml(filePath, 500, 'Invalid upload session'),
       davStatus: 500,
     };
   }
-  const chunkSize = 1024 * 1024 * 60;
-  let start = 0,
-    newStart,
-    retryCount = 0;
+  let offset = 0;
+  while (offset < fileSize) {
+    const chunkEnd = Math.min(offset + chunkSize, fileSize);
+    const chunk = fileBuffer.slice(offset, chunkEnd);
+    const contentRange = `bytes ${offset}-${chunkEnd - 1}/${fileSize}`;
+    const res = await uploadChunk(uploadUrl, chunk, contentRange);
+    if (!res.ok) {
+      return {
+        davXml: createReturnXml(filePath, res.status, 'Upload failed'),
+        davStatus: res.status,
+      };
+    }
+    offset = chunkEnd;
+  }
+  return { davXml: null, davStatus: 201 };
+}
+async function uploadChunk(uploadUrl, chunk, contentRange) {
   const maxRetries = 3;
-  const initialDelay = 2e3;
-  while (start < fileLength) {
-    const end = Math.min(start + chunkSize, fileLength);
-    const chunk = body.slice(start, end);
+  const retryDelay = 2e3;
+  let attempt = 0;
+  while (attempt < maxRetries) {
     const res = await fetch(uploadUrl, {
       method: 'PUT',
       body: chunk,
       headers: {
-        'Content-Range': `bytes ${start}-${end - 1}/${fileLength}`,
+        'Content-Length': chunk.byteLength.toString(),
+        'Content-Range': contentRange,
       },
     });
-    if (res.status >= 400) {
-      const data = await fetch(uploadUrl);
-      const jsonData = await data.json();
-      newStart = parseInt(jsonData.nextExpectedRanges[0].split('-')[0]);
-      if (!newStart) {
-        return {
-          davXml: createReturnXml(filePath, res.status, res.statusText),
-          davStatus: res.status,
-        };
-      }
-      if (retryCount < maxRetries) {
-        const delay = initialDelay * Math.pow(2, retryCount);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        retryCount++;
-        continue;
-      } else {
-        return {
-          davXml: createReturnXml(filePath, res.status, 'Max retries exceeded'),
-          davStatus: res.status,
-        };
-      }
+    if (res.ok) {
+      return res;
     }
-    retryCount = 0;
-    start = newStart || end;
-    newStart = void 0;
+    if (res.status >= 500) {
+      const delay = retryDelay * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      attempt++;
+    } else {
+      return res;
+    }
   }
-  return { davXml: null, davStatus: 201 };
+  return new Response(null, { status: 500, statusText: 'Max retries exceeded' });
 }
 
 // back-end-cf/handlers/dav-handler.ts
@@ -470,39 +491,44 @@ async function handleWebdav(filePath, request, davCredentials) {
   if (!davAuth) {
     return new Response('Unauthorized', {
       status: 401,
-      headers: {
-        'WWW-Authenticate': 'Basic realm="WebDAV"',
-      },
+      headers: { 'WWW-Authenticate': 'Basic realm="WebDAV"' },
     });
   }
+  const pathname = new URL(request.url).pathname;
+  const isProxyRequest = PROTECTED.PROXY_KEYWORD
+    ? pathname.startsWith(`/${PROTECTED.PROXY_KEYWORD}`)
+    : false;
+  const rawDestination = request.headers.get('Destination');
+  const destination =
+    isProxyRequest && rawDestination
+      ? rawDestination.replace(`/${PROTECTED.PROXY_KEYWORD}`, '')
+      : rawDestination;
   const handlers = {
     HEAD: () => handleHead(filePath),
-    COPY: () => handleCopyMove(filePath, 'COPY', request.headers.get('Destination')),
-    MOVE: () => handleCopyMove(filePath, 'MOVE', request.headers.get('Destination')),
+    COPY: () => handleCopyMove(filePath, 'COPY', destination),
+    MOVE: () => handleCopyMove(filePath, 'MOVE', destination),
     DELETE: () => handleDelete(filePath),
     MKCOL: () => handleMkcol(filePath),
     PUT: () => handlePut(filePath, request),
     PROPFIND: () => handlePropfind(filePath),
   };
   const handler = handlers[request.method];
-  const davRes = handleDavRes(await handler(), request);
+  const davRes = handleDavRes(await handler(), isProxyRequest);
   return new Response(davRes.davXml, {
     status: davRes.davStatus,
     headers: davRes.davHeaders,
   });
 }
-function handleDavRes(davRes, request) {
+function handleDavRes(davRes, isProxyRequest) {
   const davHeaders = {
     ...(davRes.davXml ? { 'Content-Type': 'application/xml; charset=utf-8' } : {}),
     ...(davRes.davHeaders || {}),
   };
-  const proxyDownload = new URL(request.url).pathname.startsWith(`/${PROTECTED.PROXY_KEYWORD}`);
   const davXml =
-    proxyDownload && davRes.davXml
+    isProxyRequest && davRes.davXml
       ? davRes.davXml.replaceAll('<d:href>', `<d:href>/${PROTECTED.PROXY_KEYWORD}`)
       : davRes.davXml;
-  const davStatus = davRes.davStatus;
-  return { davXml, davStatus, davHeaders };
+  return { davXml, davStatus: davRes.davStatus, davHeaders };
 }
 
 // back-end-cf/handlers/post-handler.ts

@@ -1,18 +1,19 @@
-import { DriveItem, OAUTH, PROTECTED } from '../types/apiType';
+import { DriveItem, runtimeEnv } from '../types/apiType';
 import { fetchWithAuth, fetchBatchRes, fetchSaveSkipToken } from './utils';
-import { davPathSplit, createReturnXml, createPropfindXml } from './dav';
-import { fetchUploadLinks } from '../handlers/file-handler';
+import { davPathSplit, createReturnXml, createPropfindXml, buildUriPath } from './davUtils';
 
 export async function handlePropfind(filePath: string) {
-  const { path: fetchPath, parent } = davPathSplit(filePath);
+  const { path, parent } = davPathSplit(filePath);
   const allFiles: DriveItem[] = [];
   const skipTokens: string[] = [];
 
-  const currentTokens = await fetchSaveSkipToken(fetchPath);
-  const uriPath =
-    fetchPath === `/` ? PROTECTED.EXPOSE_PATH : `:${PROTECTED.EXPOSE_PATH}${fetchPath}:`;
+  const currentTokens = await fetchSaveSkipToken(path);
+  const itemPath =
+    path === `/`
+      ? runtimeEnv.PROTECTED.EXPOSE_PATH
+      : `:${runtimeEnv.PROTECTED.EXPOSE_PATH}${path}:`;
   const select = '?select=name,size,lastModifiedDateTime,file';
-  const baseUrl = `/me/drive/root${uriPath}/children${select}&top=1000`;
+  const baseUrl = `/me/drive/root${itemPath}/children${select}&top=1000`;
 
   const createListRequest = (id: string, skipToken?: string) => ({
     id,
@@ -27,7 +28,7 @@ export async function handlePropfind(filePath: string) {
       {
         id: '1',
         method: 'GET',
-        url: `/me/drive/root${uriPath}${select}`,
+        url: `/me/drive/root${itemPath}${select}`,
         headers: { 'Content-Type': 'application/json' },
         body: {},
       },
@@ -41,7 +42,7 @@ export async function handlePropfind(filePath: string) {
   for (const resp of batchResult.responses) {
     if (resp.status !== 200) {
       return {
-        davXml: createReturnXml(fetchPath, resp.status, 'Failed to fetch files'),
+        davXml: createReturnXml(path, resp.status, 'Failed to fetch files'),
         davStatus: resp.status,
       };
     }
@@ -65,8 +66,8 @@ export async function handlePropfind(filePath: string) {
       skipTokens.push(skipToken);
     }
   }
-  await fetchSaveSkipToken(fetchPath, skipTokens);
-  const propfindPath = allFiles[0]?.file ? parent : fetchPath;
+  await fetchSaveSkipToken(path, skipTokens);
+  const propfindPath = allFiles[0]?.file ? parent : path;
   const responseXML = createPropfindXml(propfindPath, allFiles);
   return { davXml: responseXML, davStatus: 207 };
 }
@@ -83,11 +84,13 @@ export async function handleCopyMove(
     };
   }
 
-  const { parent: parent, path: uriPath } = davPathSplit(filePath);
-  const uri =
-    `${OAUTH.apiUrl}:${encodeURIComponent(PROTECTED.EXPOSE_PATH + uriPath)}` +
-    (method === 'COPY' ? ':/copy' : '');
+  const { path, uri: initialUri } = buildUriPath(
+    filePath,
+    runtimeEnv.PROTECTED.EXPOSE_PATH,
+    runtimeEnv.OAUTH.apiUrl,
+  );
   const { parent: newParent, tail: newTail } = davPathSplit(destination);
+  const uri = initialUri + (method === 'COPY' ? '/copy' : '');
 
   const resp = await fetchWithAuth(uri, {
     method: method === 'COPY' ? 'POST' : 'PATCH',
@@ -95,34 +98,33 @@ export async function handleCopyMove(
     body: JSON.stringify({
       name: newTail,
       parentReference: {
-        path: `/drive/root:${PROTECTED.EXPOSE_PATH}${newParent}`,
+        path: `/drive/root:${runtimeEnv.PROTECTED.EXPOSE_PATH}${newParent}`,
       },
     }),
   });
 
   const davStatus = resp.status === 200 ? 201 : resp.status;
-  const responseXML =
-    davStatus === 201 ? null : createReturnXml(uriPath, davStatus, resp.statusText);
+  const responseXML = davStatus === 201 ? null : createReturnXml(path, davStatus, resp.statusText);
 
   return { davXml: responseXML, davStatus: davStatus };
 }
 
 export async function handleDelete(filePath: string) {
-  const uriPath = davPathSplit(filePath).path;
-  const uri = `${OAUTH.apiUrl}:${encodeURIComponent(PROTECTED.EXPOSE_PATH + uriPath)}`;
-
+  const { path, uri } = buildUriPath(
+    filePath,
+    runtimeEnv.PROTECTED.EXPOSE_PATH,
+    runtimeEnv.OAUTH.apiUrl,
+  );
   const res = await fetchWithAuth(uri, { method: 'DELETE' });
   const davStatus = res.status;
-  const responseXML =
-    davStatus === 204 ? null : createReturnXml(uriPath, davStatus, res.statusText);
+  const responseXML = davStatus === 204 ? null : createReturnXml(path, davStatus, res.statusText);
 
   return { davXml: responseXML, davStatus: davStatus };
 }
 
 export async function handleHead(filePath: string) {
   const uri = [
-    OAUTH.apiUrl,
-    `:${encodeURIComponent(PROTECTED.EXPOSE_PATH + davPathSplit(filePath).path)}`,
+    buildUriPath(filePath, runtimeEnv.PROTECTED.EXPOSE_PATH, runtimeEnv.OAUTH.apiUrl).uri,
     '?select=size,file,folder,lastModifiedDateTime',
   ].join('');
   const resp = await fetchWithAuth(uri);
@@ -143,7 +145,9 @@ export async function handleHead(filePath: string) {
 
 export async function handleMkcol(filePath: string) {
   const { parent, tail } = davPathSplit(filePath);
-  const uri = `${OAUTH.apiUrl}:${encodeURIComponent(PROTECTED.EXPOSE_PATH + parent)}:/children`;
+  const uri =
+    buildUriPath(parent, runtimeEnv.PROTECTED.EXPOSE_PATH, runtimeEnv.OAUTH.apiUrl).uri +
+    '/children';
 
   const res = await fetchWithAuth(uri, {
     method: 'POST',
@@ -162,67 +166,97 @@ export async function handleMkcol(filePath: string) {
 }
 
 export async function handlePut(filePath: string, request: Request) {
+  const simpleUploadLimit = 4 * 1024 * 1024; // 4MB
+  const chunkSize = 60 * 1024 * 1024;
   const contentLength = request.headers.get('Content-Length') || '0';
-  const fileLength = parseInt(contentLength);
-  const body = await request.arrayBuffer();
-  const uploadList = [{ remotePath: filePath, fileSize: fileLength }];
-  const uploadUrl = (await fetchUploadLinks(uploadList)).files[0].uploadUrl;
+  const fileSize = parseInt(contentLength);
+  const fileBuffer = await request.arrayBuffer();
 
+  if (fileSize <= simpleUploadLimit) {
+    const uri =
+      buildUriPath(filePath, runtimeEnv.PROTECTED.EXPOSE_PATH, runtimeEnv.OAUTH.apiUrl).uri +
+      '/content';
+    const res = await fetchWithAuth(uri, {
+      method: 'PUT',
+      body: fileBuffer,
+    });
+
+    if (!res.ok) {
+      return {
+        davXml: createReturnXml(filePath, res.status, res.statusText),
+        davStatus: res.status,
+      };
+    }
+
+    return { davXml: null, davStatus: 201 };
+  }
+
+  const uri =
+    buildUriPath(filePath, runtimeEnv.PROTECTED.EXPOSE_PATH, runtimeEnv.OAUTH.apiUrl).uri +
+    '/createUploadSession';
+  const uploadSessionRes = await fetchWithAuth(uri, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      item: { '@microsoft.graph.conflictBehavior': 'replace' },
+    }),
+  });
+
+  const { uploadUrl } = (await uploadSessionRes.json()) as { uploadUrl?: string };
   if (!uploadUrl) {
     return {
-      davXml: createReturnXml(filePath, 500, 'Failed to get upload URL'),
+      davXml: createReturnXml(filePath, 500, 'Invalid upload session'),
       davStatus: 500,
     };
   }
 
-  const chunkSize = 1024 * 1024 * 60;
-  let start = 0,
-    newStart,
-    retryCount = 0;
+  let offset = 0;
+  while (offset < fileSize) {
+    const chunkEnd = Math.min(offset + chunkSize, fileSize);
+    const chunk = fileBuffer.slice(offset, chunkEnd);
+    const contentRange = `bytes ${offset}-${chunkEnd - 1}/${fileSize}`;
+
+    const res = await uploadChunk(uploadUrl, chunk, contentRange);
+    if (!res.ok) {
+      return {
+        davXml: createReturnXml(filePath, res.status, 'Upload failed'),
+        davStatus: res.status,
+      };
+    }
+
+    offset = chunkEnd;
+  }
+
+  return { davXml: null, davStatus: 201 };
+}
+
+async function uploadChunk(uploadUrl: string, chunk: ArrayBuffer, contentRange: string) {
   const maxRetries = 3;
-  const initialDelay = 2000;
+  const retryDelay = 2000;
+  let attempt = 0;
 
-  while (start < fileLength) {
-    const end = Math.min(start + chunkSize, fileLength);
-    const chunk = body.slice(start, end);
-
+  while (attempt < maxRetries) {
     const res = await fetch(uploadUrl, {
       method: 'PUT',
       body: chunk,
       headers: {
-        'Content-Range': `bytes ${start}-${end - 1}/${fileLength}`,
+        'Content-Length': chunk.byteLength.toString(),
+        'Content-Range': contentRange,
       },
     });
 
-    if (res.status >= 400) {
-      const data = await fetch(uploadUrl);
-      const jsonData: any = await data.json();
-      newStart = parseInt(jsonData.nextExpectedRanges[0].split('-')[0]);
-
-      if (!newStart) {
-        return {
-          davXml: createReturnXml(filePath, res.status, res.statusText),
-          davStatus: res.status,
-        };
-      }
-
-      if (retryCount < maxRetries) {
-        const delay = initialDelay * Math.pow(2, retryCount);
-        await new Promise((resolve) => setTimeout(resolve, delay));
-        retryCount++;
-        continue;
-      } else {
-        return {
-          davXml: createReturnXml(filePath, res.status, 'Max retries exceeded'),
-          davStatus: res.status,
-        };
-      }
+    if (res.ok) {
+      return res;
     }
 
-    retryCount = 0;
-    start = newStart || end;
-    newStart = undefined;
+    if (res.status >= 500) {
+      const delay = retryDelay * Math.pow(2, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      attempt++;
+    } else {
+      return res;
+    }
   }
 
-  return { davXml: null, davStatus: 201 };
+  return new Response(null, { status: 500, statusText: 'Max retries exceeded' });
 }

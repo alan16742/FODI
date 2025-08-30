@@ -20,16 +20,14 @@ Fast OneDrive Index / FODI，无需服务器的 OneDrive 快速列表程序
 
 ## 部署
 
-### 复制粘贴
+### 一键部署
 
-- [在 Cloudflare 部署 FODI 后端](https://logi.im/back-end/fodi-on-cloudflare.html)
-- [FODI Deployment Helper](https://logi.im/fodi/get-code)
+1. [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/vcheckzen/FODI)
+2. 从 [fodi](https://logi.im/fodi/get-code) 或者 [openlist](https://api.oplist.org) 处获取 refreshtoken
+3. 在 [Dashboard](https://dash.cloudflare.com/?to=/:account/workers/services/view/fodi/production/settings#variables) 填入 `REFRESH_TOKEN`
 
-### 在线导入
-
-1. [把项目导入到自己 Github 的私有仓库](https://docs.github.com/en/migrations/importing-source-code/using-github-importer/importing-a-repository-with-github-importer#importing-a-repository-with-github-importer)
-2. 编辑 `wrangler.jsonc` 并提交修改
-3. [从 Cloudflare 控制台导入你的 Github 仓库](https://dash.cloudflare.com/?to=/:account/workers-and-pages/create)
+> [!CAUTION]
+> 更新 Fork 仓库后：**必须**填写 `kv_namespaces` 中的 `id`；**无需**填写 `REFRESH_TOKEN`；**按需**填写其余参数
 
 <details>
     <summary>或者</summary>

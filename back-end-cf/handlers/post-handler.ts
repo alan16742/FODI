@@ -1,6 +1,6 @@
-import { PROTECTED, PostPayload } from '../types/apiType';
+import { PostPayload } from '../types/apiType';
 import { authenticate } from '../services/auth';
-import { downloadFile, fetchFiles, fetchUploadLinks } from './file-handler';
+import { downloadFile, fetchFiles, fetchUploadLinks } from '../services/fileMethods';
 
 export async function handlePostRequest(
   request: Request,
@@ -11,24 +11,22 @@ export async function handlePostRequest(
     'Access-Control-Allow-Origin': '*',
     'Cache-Control': 'max-age=3600',
     'Content-Type': 'application/json; charset=utf-8',
-    'Last-Modified': new Date().toUTCString(),
   };
   const body: PostPayload = await request.json();
   const requestPath = decodeURIComponent(body.path || '');
 
   // Upload files
   if (requestUrl.searchParams.has('upload')) {
-    const allowUpload = (await downloadFile(`${requestPath}/.upload`)).status === 302;
-
-    const uploadAuth = await authenticate(requestPath, body.passwd, env.WEBDAV);
+    const isUploadFileExists = (await downloadFile(`${requestPath}/.upload`)).status === 302;
+    const isUploadAuthorized = await authenticate(requestPath, body.passwd, env.WEBDAV);
 
     if (
-      !allowUpload ||
-      !uploadAuth ||
+      !isUploadFileExists ||
+      !isUploadAuthorized ||
       body.files?.some(
         (file) =>
           (file.remotePath.split('/').pop() ?? '').toLowerCase() ===
-          PROTECTED.PASSWD_FILENAME.toLowerCase(),
+          env.PROTECTED.PASSWD_FILENAME.toLowerCase(),
       )
     ) {
       throw new Error('access denied');
@@ -45,8 +43,8 @@ export async function handlePostRequest(
   }
 
   // List a folder
-  const listAuth = await authenticate(requestPath, body.passwd, env.WEBDAV);
-  const files = listAuth
+  const isListAuthorized = await authenticate(requestPath, body.passwd, env.WEBDAV);
+  const files = isListAuthorized
     ? await fetchFiles(requestPath, body.skipToken, body.orderby)
     : {
         parent: requestPath,

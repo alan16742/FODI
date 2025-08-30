@@ -51,3 +51,10 @@ function createResourceXml(encodedParent: string, resource: DriveItem, isDirecto
     </d:propstat>
   </d:response>\n`;
 }
+
+export function buildUriPath(filePath: string, exposePath: string, apiUrl: string) {
+  const { path } = davPathSplit(filePath);
+  const itemPath = exposePath + path;
+  const uri = itemPath === '/' ? apiUrl : `${apiUrl}:${encodeURIComponent(itemPath)}:`;
+  return { path, uri };
+}

@@ -1,16 +1,11 @@
-import {
-  AccessTokenResponse,
-  BatchReqPayload,
-  BatchRespData,
-  OAUTH,
-  FODI_CACHE,
-} from '../types/apiType';
+import { AccessTokenResponse, BatchReqPayload, BatchRespData, runtimeEnv } from '../types/apiType';
 
 export async function fetchAccessToken(
   envOauth: Env['OAUTH'],
+  envRefreshToken: Env['REFRESH_TOKEN'],
   envFodi?: Env['FODI_CACHE'],
 ): Promise<string> {
-  let refreshToken = envOauth.refreshToken;
+  let refreshToken = envRefreshToken;
   if (envFodi !== undefined) {
     const tokenData = await envFodi.get('token_data');
     const cache = tokenData ? JSON.parse(tokenData) : null;
@@ -44,7 +39,11 @@ export async function fetchAccessToken(
 }
 
 export async function fetchWithAuth(uri: string, options: RequestInit = {}) {
-  const accessToken = await fetchAccessToken(OAUTH, FODI_CACHE);
+  const accessToken = await fetchAccessToken(
+    runtimeEnv.OAUTH,
+    runtimeEnv.REFRESH_TOKEN,
+    runtimeEnv.FODI_CACHE,
+  );
   return fetch(uri, {
     ...options,
     headers: {
@@ -55,7 +54,7 @@ export async function fetchWithAuth(uri: string, options: RequestInit = {}) {
 }
 
 export async function fetchBatchRes(batch: BatchReqPayload): Promise<BatchRespData> {
-  const batchResponse = await fetchWithAuth(`${OAUTH.apiHost}/v1.0/$batch`, {
+  const batchResponse = await fetchWithAuth(`${runtimeEnv.OAUTH.apiHost}/v1.0/$batch`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(batch),
@@ -84,14 +83,14 @@ async function postFormData<T>(url: string, data: Record<string, string>): Promi
 
 export async function fetchSaveSkipToken(path: string, tokensToSave?: string[]): Promise<string[]> {
   path = path.toLocaleLowerCase();
-  const skipTokenString = await FODI_CACHE.get('skip_token');
+  const skipTokenString = await runtimeEnv.FODI_CACHE.get('skip_token');
   const skipTokenData = skipTokenString ? JSON.parse(skipTokenString) : {};
-  const currentTokens = skipTokenData[path]?.split(',') || [];
+  const currentTokens = skipTokenString ? skipTokenData[path]?.split(',') : [];
 
   const tokenChanged = tokensToSave && currentTokens.join(',') !== tokensToSave.join(',');
   if (tokenChanged) {
     skipTokenData[path] = tokensToSave.join(',');
-    await FODI_CACHE.put('skip_token', JSON.stringify(skipTokenData));
+    await runtimeEnv.FODI_CACHE.put('skip_token', JSON.stringify(skipTokenData));
   }
 
   return currentTokens;

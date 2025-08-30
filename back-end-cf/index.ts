@@ -11,6 +11,6 @@ export default {
   },
 
   async scheduled(controller: ScheduledController, env: Env, ctx: ExecutionContext) {
-    ctx.waitUntil(fetchAccessToken(env.OAUTH, env.FODI_CACHE));
+    ctx.waitUntil(fetchAccessToken(env.OAUTH, env.REFRESH_TOKEN, env.FODI_CACHE));
   },
 };
