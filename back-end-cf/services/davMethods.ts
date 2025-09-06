@@ -158,9 +158,9 @@ export async function handlePut(filePath: string, request: Request) {
   const chunkSize = 60 * 1024 * 1024;
   const contentLength = request.headers.get('Content-Length') || '0';
   const fileSize = parseInt(contentLength);
-  const fileBuffer = await request.arrayBuffer();
 
   if (fileSize <= simpleUploadLimit) {
+    const fileBuffer = await request.arrayBuffer();
     const uri =
       buildUriPath(filePath, runtimeEnv.PROTECTED.EXPOSE_PATH, runtimeEnv.OAUTH.apiUrl) +
       '/content';
@@ -169,14 +169,9 @@ export async function handlePut(filePath: string, request: Request) {
       body: fileBuffer,
     });
 
-    if (!res.ok) {
-      return {
-        davXml: createReturnXml(filePath, res.status, res.statusText),
-        davStatus: res.status,
-      };
-    }
-
-    return { davXml: null, davStatus: 201 };
+    const davXml = res.ok ? null : createReturnXml(filePath, res.status, res.statusText);
+    const davStatus = res.ok ? 201 : res.status;
+    return { davXml, davStatus };
   }
 
   const uri =
@@ -199,23 +194,44 @@ export async function handlePut(filePath: string, request: Request) {
   }
 
   let offset = 0;
-  while (offset < fileSize) {
-    const chunkEnd = Math.min(offset + chunkSize, fileSize);
-    const chunk = fileBuffer.slice(offset, chunkEnd);
-    const contentRange = `bytes ${offset}-${chunkEnd - 1}/${fileSize}`;
+  const reader = request.body!!.getReader();
+  try {
+    while (offset < fileSize) {
+      const chunkEnd = Math.min(offset + chunkSize, fileSize);
+      const expectedChunkSize = chunkEnd - offset;
 
-    const res = await uploadChunk(uploadUrl, chunk, contentRange);
-    if (!res.ok) {
-      return {
-        davXml: createReturnXml(filePath, res.status, 'Upload failed'),
-        davStatus: res.status,
-      };
+      let chunkBuffer = new Uint8Array(expectedChunkSize);
+      let received = 0;
+      while (received < expectedChunkSize) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunkBuffer.set(value, received);
+        received += value.length;
+      }
+
+      if (received < expectedChunkSize) {
+        chunkBuffer = chunkBuffer.slice(0, received);
+      }
+
+      const contentRange = `bytes ${offset}-${offset + chunkBuffer.byteLength - 1}/${fileSize}`;
+      const res = await uploadChunk(uploadUrl, chunkBuffer.buffer, contentRange);
+      if (!res.ok) {
+        return {
+          davXml: createReturnXml(filePath, res.status, 'Upload failed'),
+          davStatus: res.status,
+        };
+      }
+      offset += chunkBuffer.byteLength;
     }
-
-    offset = chunkEnd;
+    return { davXml: null, davStatus: 201 };
+  } catch (err) {
+    return {
+      davXml: createReturnXml(filePath, 500, 'Stream upload error'),
+      davStatus: 500,
+    };
+  } finally {
+    reader.releaseLock();
   }
-
-  return { davXml: null, davStatus: 201 };
 }
 
 async function uploadChunk(uploadUrl: string, chunk: ArrayBuffer, contentRange: string) {

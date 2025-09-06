@@ -62,7 +62,12 @@ export async function fetchUploadLinks(fileList: UploadPayload[]) {
   return { files: fileList };
 }
 
-export async function downloadFile(filePath: string, stream?: boolean, format?: string | null) {
+export async function downloadFile(
+  filePath: string,
+  stream?: boolean,
+  format?: string | null,
+  range?: string | null,
+) {
   const supportedFormats = ['glb', 'html', 'jpg', 'pdf'];
   if (format && !supportedFormats.includes(format.toLowerCase())) {
     return new Response('Unsupported target format', { status: 400 });
@@ -84,7 +89,12 @@ export async function downloadFile(filePath: string, stream?: boolean, format?: 
 
   // proxy download
   if (stream) {
-    return fetch(downloadUrl);
+    const remoteResp = await fetch(downloadUrl, {
+      headers: range ? { Range: range } : {},
+    });
+    const { readable, writable } = new IdentityTransformStream();
+    remoteResp.body!!.pipeTo(writable);
+    return new Response(readable, remoteResp);
   }
 
   // direct download
