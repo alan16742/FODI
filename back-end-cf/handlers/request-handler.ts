@@ -2,7 +2,8 @@ import { sha256 } from '../services/utils';
 import { handleWebdav } from './dav-handler';
 import { handleGetRequest } from './get-handler';
 import { handlePostRequest } from './post-handler';
-import { authenticateToken } from '../services/authUtils';
+import { getTokenScopes } from '../services/authUtils';
+import { parsePath } from '../services/pathUtils';
 
 export async function cacheRequest(
   request: Request,
@@ -23,15 +24,14 @@ export async function cacheRequest(
   }
 
   const cacheUrl = new URL(request.url);
-  const isInProtected =
-    cacheUrl.pathname.replace(`/${env.PROTECTED.PROXY_KEYWORD}/`, '').split('/').length <=
-    env.PROTECTED.PROTECTED_LAYERS;
-  const tokenScopeList = cacheUrl.searchParams.get('ts')?.split(',') || [];
-  const isTokenValid = await authenticateToken(env.PASSWORD, cacheUrl, []);
-  const isGetAllowed =
-    !isInProtected ||
-    (env.ASSETS && cacheUrl.pathname === '/') ||
-    ((tokenScopeList.includes('download') || tokenScopeList.length === 0) && isTokenValid);
+  const remainingPathDepth = parsePath(
+    decodeURIComponent(cacheUrl.pathname),
+    `/${env.PROTECTED.PROXY_KEYWORD}`,
+    true,
+  ).path.split('/').length;
+  const isInProtected = remainingPathDepth <= env.PROTECTED.PROTECTED_LAYERS;
+  const tokenScopeList = await getTokenScopes(env.PASSWORD, cacheUrl);
+  const isGetAllowed = !isInProtected || tokenScopeList.includes('download');
 
   const requestKeyGenerators = {
     GET: () => (isGetAllowed ? 'verified' : ''),
@@ -39,8 +39,11 @@ export async function cacheRequest(
   };
   const key = await requestKeyGenerators[method]();
 
+  if (['GET'].includes(method)) {
+    cacheUrl.search = ''; // avoid query parameters affecting cache entry
+  }
+
   cacheUrl.pathname = `/${method}` + cacheUrl.pathname + key;
-  cacheUrl.search = ''; // avoid query parameters affecting cache entry
   const cacheKey = new Request(cacheUrl.toString());
   const cache = (caches as any).default;
   const cachedResponse: Response | null = await cache.match(cacheKey);
@@ -55,7 +58,7 @@ export async function cacheRequest(
 
   // expired or forced refresh
   const isCacheExpired = cachedAgeSec > cacheTTL;
-  const isForceRefresh = tokenScopeList.includes('refresh') && isTokenValid;
+  const isForceRefresh = tokenScopeList.includes('refresh');
 
   if (!cachedResponse || isCacheExpired || isForceRefresh) {
     const upstreamResponse = await handleRequest(request, env);

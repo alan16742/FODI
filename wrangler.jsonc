@@ -6,7 +6,7 @@
   "assets": {
     "directory": "./front-end/",
     "binding": "ASSETS",
-    "run_worker_first": true
+    "run_worker_first": ["/deployfodi", "!/"]
   },
   "build": {
     "command": "npm run build"

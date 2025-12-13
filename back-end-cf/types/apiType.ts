@@ -94,4 +94,4 @@ export interface DavRes {
 }
 
 export type DavDepth = '0' | '1' | 'infinity';
-export type TokenScope = 'download' | 'refresh';
+export type TokenScope = 'download' | 'list' | 'refresh' | 'upload';

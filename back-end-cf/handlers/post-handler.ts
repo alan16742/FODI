@@ -1,5 +1,5 @@
-import type { PostPayload } from '../types/apiType';
-import { authenticatePost } from '../services/authUtils';
+import type { PostPayload, Resource } from '../types/apiType';
+import { authenticatePost, getTokenScopes } from '../services/authUtils';
 import { downloadFile, fetchFiles, fetchUploadLinks } from '../services/fileMethods';
 import { saveDeployData } from '../services/deployMethods';
 
@@ -22,6 +22,7 @@ export async function handlePostRequest(
   };
   const body: PostPayload = await request.json();
   const requestPath = body.path || '/';
+  const tokenScopeList = await getTokenScopes(env.PASSWORD, requestUrl, requestPath);
   const isAuthorized = await authenticatePost(requestPath, body.passwd, env.PASSWORD);
 
   // Upload files
@@ -30,10 +31,14 @@ export async function handlePostRequest(
       return new Response('no files to upload', { status: 400 });
     }
 
-    const isUploadFileExists = (await downloadFile(`${requestPath}/.upload`)).status === 302;
+    const isUploadFileExists =
+      tokenScopeList.includes('upload') ||
+      (await downloadFile(`${requestPath}/.upload`)).status === 302;
+    const isUploadAllowed = tokenScopeList.includes('upload') || isAuthorized;
+
     if (
       !isUploadFileExists ||
-      !isAuthorized ||
+      !isUploadAllowed ||
       body.files?.some(
         (file) =>
           (file.remotePath.split('/').pop() ?? '').toLowerCase() ===
@@ -50,14 +55,25 @@ export async function handlePostRequest(
   }
 
   // List a folder
-  const files = isAuthorized
+  const isListAllowed = tokenScopeList.includes('list') || isAuthorized;
+  const filesRes = isListAllowed
     ? await fetchFiles(requestPath, body.skipToken, body.orderby)
     : {
         parent: requestPath,
         files: [],
         encrypted: true,
       };
-  return new Response(JSON.stringify(files), {
+
+  if (tokenScopeList.includes('upload')) {
+    (filesRes.files as Resource[]).unshift({
+      name: '.upload',
+      size: 0,
+      lastModifiedDateTime: new Date().toISOString(),
+      url: `upload`,
+    });
+  }
+
+  return new Response(JSON.stringify(filesRes), {
     headers: returnHeaders,
   });
 }

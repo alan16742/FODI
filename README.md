@@ -62,13 +62,13 @@ npx wrangler secret put PASSWORD
 
 ### 参数
 
-| 参数名            | 值                          | 作用                         |
-| ----------------- | --------------------------- | ---------------------------- |
-| path              | path                        | 前端起始目录                 |
-| token             | sha256(PASSWORD,path,ts,te) | 令牌，除密码外为可选参数     |
-| ts(token scope)   | download,refresh            | token 权限，不填默认下载     |
-| te(token expires) | uninx timestamp, seconds    | token 失效日期，不填默认永久 |
-| format            | [支持格式](#下载)           | 下载时转换源文件为format格式 |
+| 参数名            | 值                           | 作用                         |
+| ----------------- | ---------------------------- | ---------------------------- |
+| path              | path                         | 前端起始目录                 |
+| token             | sha256(PASSWORD,path,ts,te)  | 令牌，除密码外为可选参数     |
+| ts(token scope)   | download,list,refresh,upload | token 权限，不填默认下载     |
+| te(token expires) | uninx timestamp, seconds     | token 失效日期，不填默认永久 |
+| format            | [支持格式](#下载)            | 下载时转换源文件为format格式 |
 
 > 例: 想下载/Abc/a.txt，密码为 123456，路径 /Abc，过期时间 1735660800(2025-01-01 00:00:00)
 > `123456,/Abc,download,1735660800` 经 sha256 得到 `https://example.com/Abc/a.txt?token=73a934a6d7d995c0ad1f7745e7a0d0261323a2e5243773b418a3c3c2a71b7a53&te=1735660800&format=pdf`
