@@ -131,12 +131,15 @@ export async function authorizeActions(
         break;
 
       case 'list':
-        ok = await authenticatePost(env, path, passwd);
+        ok =
+          authenticateWebdav(passwd ?? null, env.USERNAME, env.PASSWORD) ||
+          (await authenticatePost(env, path, passwd));
         break;
 
       case 'upload':
         ok =
-          (await authenticatePost(env, path, passwd)) &&
+          (authenticateWebdav(passwd ?? null, env.USERNAME, env.PASSWORD) ||
+            (await authenticatePost(env, path, passwd))) &&
           (await downloadFile(`${path}/.upload`)).status === 302;
         break;
     }

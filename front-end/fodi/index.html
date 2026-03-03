@@ -4,15 +4,13 @@
     <script>
       window.GLOBAL_CONFIG = {
         SCF_GATEWAY: `//${window.location.host}`, // worker 地址
-        SITE_NAME: `FODI`, // 站点名称，显示在右上角
+        SITE_NAME: `FODI`, // 站点名称
         IS_BUSINESS: false, // 是否为商业版，E5 请改为 true
         PRELOAD: false, // 是否预加载文件列表，文件夹非常少才建议开启
         CDN_MAP: {
           // 加速 CDN (不对其服务稳定性和内容安全性承担任何责任)
-          // unpkg: '//npm.webcache.cn',
-          // cdnjs: '//s4.zstatic.net/ajax/libs',
-          unpkg: '//cdn.jsdelivr.net/npm',
-          cdnjs: '//cdnjs.cloudflare.com/ajax/libs',
+          unpkg: '//npm.webcache.cn',
+          cdnjs: '//s4.zstatic.net/ajax/libs',
         },
       };
     </script>
@@ -23,736 +21,635 @@
     />
     <link rel="icon" href="data:;base64,=" type="image/x-icon" />
     <link
-      href="//cdn.jsdelivr.net/npm/material-design-iconic-font@2.2.0/dist/css/material-design-iconic-font.min.css"
+      href="//npm.webcache.cn/material-design-iconic-font@2.2.0/dist/css/material-design-iconic-font.min.css"
       type="text/css"
       rel="stylesheet"
     />
+
     <style>
-      .sk-folding-cube {
-        margin: 20px auto;
-        width: 40px;
-        height: 40px;
-        position: relative;
-        -webkit-transform: rotateZ(45deg);
-        transform: rotateZ(45deg);
-      }
-
-      .sk-folding-cube .sk-cube {
-        float: left;
-        width: 50%;
-        height: 50%;
-        position: relative;
-        -webkit-transform: scale(1.1);
-        -ms-transform: scale(1.1);
-        transform: scale(1.1);
-      }
-
-      .sk-folding-cube .sk-cube:before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgb(134, 134, 134);
-        -webkit-animation: sk-foldCubeAngle 2.4s infinite linear both;
-        animation: sk-foldCubeAngle 2.4s infinite linear both;
-        -webkit-transform-origin: 100% 100%;
-        -ms-transform-origin: 100% 100%;
-        transform-origin: 100% 100%;
-      }
-
-      .sk-folding-cube .sk-cube2 {
-        -webkit-transform: scale(1.1) rotateZ(90deg);
-        transform: scale(1.1) rotateZ(90deg);
-      }
-
-      .sk-folding-cube .sk-cube3 {
-        -webkit-transform: scale(1.1) rotateZ(180deg);
-        transform: scale(1.1) rotateZ(180deg);
-      }
-
-      .sk-folding-cube .sk-cube4 {
-        -webkit-transform: scale(1.1) rotateZ(270deg);
-        transform: scale(1.1) rotateZ(270deg);
-      }
-
-      .sk-folding-cube .sk-cube2:before {
-        -webkit-animation-delay: 0.3s;
-        animation-delay: 0.3s;
-      }
-
-      .sk-folding-cube .sk-cube3:before {
-        -webkit-animation-delay: 0.6s;
-        animation-delay: 0.6s;
-      }
-
-      .sk-folding-cube .sk-cube4:before {
-        -webkit-animation-delay: 0.9s;
-        animation-delay: 0.9s;
-      }
-
-      @-webkit-keyframes sk-foldCubeAngle {
-        0%,
-        10% {
-          -webkit-transform: perspective(140px) rotateX(-180deg);
-          transform: perspective(140px) rotateX(-180deg);
-          opacity: 0;
-        }
-
-        25%,
-        75% {
-          -webkit-transform: perspective(140px) rotateX(0deg);
-          transform: perspective(140px) rotateX(0deg);
-          opacity: 1;
-        }
-
-        90%,
-        100% {
-          -webkit-transform: perspective(140px) rotateY(180deg);
-          transform: perspective(140px) rotateY(180deg);
-          opacity: 0;
-        }
-      }
-
-      @keyframes sk-foldCubeAngle {
-        0%,
-        10% {
-          -webkit-transform: perspective(140px) rotateX(-180deg);
-          transform: perspective(140px) rotateX(-180deg);
-          opacity: 0;
-        }
-
-        25%,
-        75% {
-          -webkit-transform: perspective(140px) rotateX(0deg);
-          transform: perspective(140px) rotateX(0deg);
-          opacity: 1;
-        }
-
-        90%,
-        100% {
-          -webkit-transform: perspective(140px) rotateY(180deg);
-          transform: perspective(140px) rotateY(180deg);
-          opacity: 0;
-        }
-      }
-
-      html *[data-hidden='1'] {
-        display: none;
-      }
-
-      .dplayer {
-        aspect-ratio: 16 / 9;
-      }
-
-      .list-header {
+      * {
+        margin: 0;
         padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
       }
 
-      .list-header .file > div {
+      body {
+        background: #f4f6fb;
+        height: 100vh;
+        width: 100vw;
+        overflow: hidden;
+        color: #1e293b;
+        font-size: 14px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(0, 0, 0, 0.15);
+        border-radius: 20px;
+        transition: background 0.2s;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(0, 0, 0, 0.3);
+      }
+
+      [data-hidden='1'] {
+        display: none !important;
+      }
+
+      .header-wrapper {
+        position: fixed;
+        top: 0;
+        width: 100%;
+        height: 64px;
+        backdrop-filter: blur(16px) saturate(180%);
+        background: rgba(255, 255, 255, 0.7);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        z-index: 50;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+      }
+
+      .header {
+        height: 100%;
+        padding: 0 24px;
         display: flex;
         align-items: center;
+        gap: 12px;
+      }
+
+      .header i {
+        font-size: 24px !important;
+        color: #475569;
+        transition: all 0.15s;
         cursor: pointer;
-        font-weight: bold;
-        column-gap: 0.3em;
-        user-select: none;
-      }
-
-      .list-header .file > div:active {
-        color: rgb(90, 101, 133);
-      }
-
-      .list-header i {
-        font-size: 1em !important;
-      }
-
-      .upload-entry-wrapper {
-        height: 2.5em;
-        display: flex;
-        border-bottom: solid rgb(218, 215, 215) 1px;
-      }
-
-      .upload-entry-btn {
-        width: 100%;
-        height: 100%;
-        text-align: center;
-        border: none;
-        outline: none;
-        background: white;
-        cursor: pointer;
-      }
-
-      .password-wrapper,
-      .file-upload-chooser {
+        border-radius: 30px;
+        width: 36px;
+        height: 36px;
         display: flex;
         align-items: center;
         justify-content: center;
-        column-gap: 0.6em;
-        margin-top: 1em;
-        height: 2.5em;
+      }
+      .header i:active {
+        background: rgba(15, 23, 42, 0.05);
+      }
+      .header i[disabled] {
+        opacity: 0.3;
+        pointer-events: none;
+        color: #94a3b8;
+      }
+      #main-page {
+        background: #eef2ff;
+        color: #4f46e5;
+      }
+      #main-page:active {
+        background: #dbeafe;
       }
 
-      .password {
+      .nav {
+        flex: 1;
         display: flex;
-        column-gap: 0.6em;
-        height: 100%;
+        align-items: center;
+        gap: 6px;
+        font-weight: 500;
+        color: #334155;
+        overflow: hidden;
+        min-width: 0;
       }
 
-      .password input {
-        padding: 0 0.5em;
-        outline: none;
-        border: solid rgb(218, 215, 215) 1px;
+      #path {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        min-width: 0;
+        flex: 1;
+        -webkit-overflow-scrolling: touch;
       }
-
-      .password button,
-      .file-upload-chooser button,
-      .file-upload-chooser select,
-      .file-upload-label {
-        background: white;
-        height: 100%;
-        outline: none;
-        border: solid rgb(218, 215, 215) 1px;
-      }
-
-      .password button:active,
-      .upload-entry-btn:active,
-      .file-upload-chooser button:active,
-      .file-upload-label:active {
-        color: white;
-        background: rgb(218, 215, 215);
-      }
-
-      .password-wrapper,
-      .file-upload-wrapper {
-        font-size: 0.8em;
-        padding: 0 1em;
-      }
-
-      .file-upload-input {
+      #path::-webkit-scrollbar {
         display: none;
       }
 
-      .file-upload-label {
+      .nav-path,
+      .nav-arr {
+        background: rgba(0, 0, 0, 0.03);
+        padding: 4px 12px;
+        border-radius: 40px;
+        font-size: 13px;
+        cursor: pointer;
+        transition: background 0.15s;
+        border: 0.5px solid rgba(148, 163, 184, 0.2);
+        backdrop-filter: blur(4px);
+      }
+      .nav-path:hover {
+        background: rgba(79, 70, 229, 0.1);
+        color: #4f46e5;
+      }
+      .nav-arr {
+        background: transparent;
+        border: none;
+        cursor: default;
+      }
+
+      /* ----- 主容器 ----- */
+      .container {
+        margin-top: 64px;
+        height: calc(100vh - 64px);
+        width: 100%;
+        position: relative;
+      }
+
+      .main {
+        display: flex;
+        height: 100%;
+        width: 100%;
+      }
+
+      /* 左侧树 (折叠/展开 优雅卡片) */
+      .left {
+        width: 260px;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(12px);
+        border-right: 1px solid rgba(203, 213, 225, 0.5);
+        overflow-y: auto;
+        padding: 20px 0 20px 12px;
+        transition: width 0.2s;
+        box-shadow: 4px 0 12px rgba(0, 0, 0, 0.02);
+      }
+
+      #tree-root {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .tree-node-wrapper {
+        margin-left: 0px;
+      }
+      .tree-node {
         display: flex;
         align-items: center;
-        padding: 0 0.5em;
+        gap: 6px;
+        padding: 8px 12px 8px 8px;
+        border-radius: 30px;
+        transition: all 0.15s;
+        cursor: pointer;
+        color: #334155;
+        font-weight: 450;
+        width: fit-content;
+        min-width: 160px;
       }
-
-      .file-upload-name {
+      .tree-node:hover {
+        background: rgba(79, 70, 229, 0.08);
+        color: #1e1b4b;
+      }
+      .tree-node:active {
+        background: rgba(79, 70, 229, 0.15);
+      }
+      .tree-node i {
+        font-size: 18px !important;
+        min-width: 22px;
+        color: #64748b;
+      }
+      .tree-node-name {
         white-space: nowrap;
         overflow: hidden;
-        width: 10em;
-        text-align: center;
+        text-overflow: ellipsis;
+        font-size: 13px;
+      }
+      .tree-node-wrapper .tree-node-wrapper {
+        margin-left: 22px;
+        border-left: 1.5px dashed #cbd5e1;
+        padding-left: 6px;
       }
 
-      .file-upload-progress {
-        margin: 1em 0;
-        padding: 1em;
-        background-color: rgb(247, 248, 250);
+      /* 右侧内容区 */
+      .right {
+        flex: 1;
+        background: white;
+        overflow-y: auto;
+        padding: 0;
+        border-top-left-radius: 20px; /* 柔和过渡 */
+        box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.02);
+        background: #fafcff;
+      }
+
+      /* 列表头部 (排序栏) */
+      .list-header .row {
+        background: #ffffffd6;
+        backdrop-filter: blur(8px);
+        border-bottom: 1px solid #e9eef3;
+        padding: 0 20px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        font-weight: 600;
+        color: #1e293b;
+        font-size: 13px;
+        letter-spacing: 0.3px;
+      }
+
+      .file {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        gap: 12px;
+      }
+
+      .name,
+      .lastModifiedDateTime,
+      .size {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        cursor: pointer;
+        padding: 6px 8px;
+        border-radius: 30px;
+        transition: background 0.1s;
         white-space: nowrap;
-        width: fit-content;
-        min-width: 100%;
-        display: grid;
+      }
+      .name:hover,
+      .lastModifiedDateTime:hover,
+      .size:hover {
+        background: #f1f4f9;
+      }
+      .name i,
+      .lastModifiedDateTime i,
+      .size i {
+        font-size: 16px !important;
+        opacity: 0.7;
+      }
+      .name {
+        width: 50%;
+      }
+      .lastModifiedDateTime {
+        width: 25%;
+      }
+      .size {
+        width: 25%;
+        justify-content: flex-end;
       }
 
-      .file-upload-progress .log-separator {
-        background-image: url("data:image/svg+xml;utf8,<svg width='9' height='9' xmlns='http://www.w3.org/2000/svg' version='1.1'><text y='10'>=</text></svg>");
-        padding: 5px 0;
-        margin: 5px 0;
+      /* 文件列表行 */
+      .row.file-wrapper {
+        display: flex;
+        align-items: center;
+        padding: 0 20px;
+        height: 52px;
+        border-bottom: 1px solid #ecf1f7;
+        transition: background 0.15s;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .row.file-wrapper:hover {
+        background: #f1f5fe;
+      }
+      .row.file-wrapper .file i {
+        font-size: 20px !important;
+        min-width: 28px;
+        color: #5b6b8c;
+      }
+      .row.file-wrapper .name {
+        width: 50%;
+        color: #1e293b;
+        font-weight: 450;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .row.file-wrapper .lastModifiedDateTime {
+        width: 25%;
+        color: #5b6b8c;
+      }
+      .row.file-wrapper .size {
+        width: 25%;
+        color: #475569;
+        font-feature-settings: 'tnum';
       }
 
-      .markdown-body,
-      .markdown-body * {
-        font-family: initial;
+      /* 上传区域 (集成卡片) */
+      .upload-entry-wrapper {
+        padding: 16px 20px 8px;
+        background: linear-gradient(to bottom, #ffffff, #f9fcff);
+        border-bottom: 1px solid #e2e8f0;
+      }
+      .upload-entry-btn {
+        width: 100%;
+        background: white;
+        border: 1.5px dashed #a5b4cb;
+        border-radius: 40px;
+        padding: 12px;
+        font-weight: 500;
+        color: #334155;
+        transition: all 0.2s;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        font-size: 13px;
+      }
+      .upload-entry-btn:hover {
+        border-color: #4f46e5;
+        background: #f5f3ff;
+        color: #312e81;
+      }
+
+      /* README markdown 卡片 */
+      .markdown-body {
+        border-radius: 24px;
+        margin: 20px;
+        padding: 24px !important;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.02);
+        border: 1px solid #edf2f9;
+      }
+      #readme {
+        max-width: 100%;
+        overflow-x: auto;
       }
 
       .markdown-alert {
         padding: 0 1em;
         margin-bottom: 16px;
         color: inherit;
-        border-left: 0.25em solid #444c56;
+        border-left: 0.25em solid var(--alert-color, #444c56);
       }
 
       .markdown-alert-title {
         display: inline-flex;
         align-items: center;
         font-weight: 500;
+        color: var(--alert-color, inherit);
       }
 
       .markdown-alert-note {
-        border-left-color: #539bf5;
+        --alert-color: #539bf5;
       }
 
       .markdown-alert-tip {
-        border-left-color: #57ab5a;
+        --alert-color: #57ab5a;
       }
 
       .markdown-alert-important {
-        border-left-color: #986ee2;
+        --alert-color: #986ee2;
       }
 
       .markdown-alert-warning {
-        border-left-color: #c69026;
+        --alert-color: #c69026;
       }
 
       .markdown-alert-caution {
-        border-left-color: #e5534b;
-      }
-
-      .markdown-alert-note > .markdown-alert-title {
-        color: #539bf5;
-      }
-
-      .markdown-alert-tip > .markdown-alert-title {
-        color: #57ab5a;
-      }
-
-      .markdown-alert-important > .markdown-alert-title {
-        color: #986ee2;
-      }
-
-      .markdown-alert-warning > .markdown-alert-title {
-        color: #c69026;
-      }
-
-      .markdown-alert-caution > .markdown-alert-title {
-        color: #e5534b;
+        --alert-color: #e5534b;
       }
 
       .mr-2 {
         margin-right: 0.5rem;
       }
 
-      pre,
-      code,
-      pre *,
-      code * {
-        font-family:
-          Consolas,
-          Monaco,
-          Lucida Console,
-          Liberation Mono,
-          DejaVu Sans Mono,
-          Bitstream Vera Sans Mono,
-          Courier New,
-          Cascadia Code,
-          monospace !important;
+      .markdown-body pre {
+        background: #f1f5f9;
+        border-radius: 20px;
+        padding: 16px;
       }
 
       .preview {
-        font-size: 0.8em;
-        height: 100%;
+        background: #ffffff;
+        min-height: 100%;
       }
-
-      .preview .content {
-        clear: both;
-        padding: 0 1em 1em 1em;
-        margin: 0 auto;
-        width: fit-content;
-        height: fit-content;
-        min-width: 100%;
+      .preview .info {
         display: flex;
-        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        padding: 16px 24px;
+        background: #f8fafd;
+        border-bottom: 1px solid #e2e8f0;
+        flex-wrap: wrap;
       }
-
-      .preview .content pre {
-        margin: 0;
-      }
-
       .file-name {
-        line-height: 1em;
-        padding: 1em 1em 0;
-        text-align: center;
+        font-weight: 600;
+        font-size: 16px;
+        flex: 1;
         white-space: nowrap;
         overflow: hidden;
+        text-overflow: ellipsis;
+        color: #0f172a;
       }
 
       .btn {
-        float: right;
-        text-align: center;
-        border: solid rgb(218, 215, 215) 1px;
-        border-radius: 1em;
-        margin: 1em 0.2em;
-        width: 4em;
-        height: 2em;
-        line-height: 2em;
-        user-select: none;
-        -moz-user-select: none;
-        -o-user-select: none;
-        -khtml-user-select: none;
-        -webkit-user-select: none;
-        -ms-user-select: none;
+        padding: 6px 18px;
+        border-radius: 40px;
+        background: white;
+        border: 1px solid #d9e2ef;
+        font-size: 13px;
+        font-weight: 500;
+        color: #334155;
+        cursor: pointer;
+        transition: all 0.15s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
       }
-
+      .btn:hover {
+        background: #f1f4f9;
+        border-color: #b9c7da;
+      }
       .btn:active {
-        color: white;
-        background: rgb(218, 215, 215);
+        background: #e2e8f0;
+        transform: scale(0.97);
       }
 
-      .btn.download {
-        margin-right: 1em;
+      .content {
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: center;
+        min-height: 300px;
+      }
+
+      .password-wrapper {
+        padding: 40px 20px;
+        display: flex;
+        justify-content: center;
+      }
+      .password {
+        display: flex;
+        gap: 12px;
+        background: white;
+        padding: 12px 16px;
+        border-radius: 60px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        border: 1px solid #dee7f2;
+        width: fit-content;
+      }
+      .password input {
+        border: none;
+        background: #f1f6fc;
+        padding: 12px 20px;
+        border-radius: 40px;
+        font-size: 14px;
+        outline: none;
+        width: 240px;
+      }
+      .password button {
+        background: #0f172a;
+        color: white;
+        border: none;
+        border-radius: 40px;
+        padding: 0 32px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+        cursor: pointer;
+        transition: 0.15s;
+      }
+      .password button:hover {
+        background: #1e293b;
+      }
+
+      /* 上传进度区域 */
+      .file-upload-wrapper {
+        padding: 24px;
+      }
+      .file-upload-chooser {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        background: #f1f6fc;
+        padding: 16px;
+        border-radius: 40px;
+        flex-wrap: wrap;
+      }
+      .file-upload-chooser select,
+      .file-upload-chooser button,
+      .file-upload-label {
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 40px;
+        padding: 10px 18px;
+        font-size: 13px;
+        cursor: pointer;
+        outline: none;
+      }
+      .file-upload-name {
+        background: white;
+        padding: 8px 16px;
+        border-radius: 40px;
+        min-width: 180px;
+        color: #475569;
+        border: 1px solid #e2e8f0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .file-upload-progress {
+        margin-top: 20px;
+        background: #f8fafc;
+        border-radius: 24px;
+        padding: 16px;
+        font-family: monospace;
+        font-size: 12px;
+        border: 1px solid #e9edf3;
+      }
+
+      /* 返回顶部按钮 */
+      #back-to-top {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        background: white;
+        border-radius: 50px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        transition: 0.2s;
+        z-index: 99;
+      }
+      #back-to-top i {
+        font-size: 28px !important;
+        color: #4f46e5;
+      }
+      #back-to-top:hover {
+        background: #eef2ff;
+        transform: translateY(-4px);
+      }
+
+      .sk-folding-cube {
+        margin: 30px auto;
+        width: 40px;
+        height: 40px;
+        position: relative;
+      }
+      .sk-folding-cube .sk-cube:before {
+        background-color: #4f46e5;
       }
 
       .loading-wrapper {
         position: fixed;
-        height: 2em;
-        line-height: 2em;
-        margin-top: 0.5em;
-        width: 100%;
-        z-index: 1;
+        top: 70px; /* 定位在头部下方 */
+        left: 50%;
+        transform: translateX(-50%);
+        height: 2.5em;
+        line-height: 2.5em;
+        width: auto;
+        z-index: 1000;
+        pointer-events: none; /* 让点击穿透 */
       }
 
       .loading {
-        color: white;
-        background: rgb(218, 215, 215);
+        color: #1e293b;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(8px);
         height: 100%;
         width: fit-content;
-        min-width: 8em;
-        padding: 0 1em;
+        min-width: 10em;
+        padding: 0 1.5em;
         margin: 0 auto;
         text-align: center;
-        border-radius: 1em;
+        border-radius: 40px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        font-weight: 500;
+        font-size: 13px;
       }
 
-      i {
-        font-size: 1.5em !important;
-      }
-
-      i.disabled {
-        color: rgb(218, 215, 215);
-      }
-
-      * {
-        box-sizing: border-box;
-        font-family: serif;
-        outline: none;
-        -webkit-tap-highlight-color: transparent; /* Removes touch background */
-        -webkit-touch-callout: none; /* Removes the callout on touch */
-      }
-
-      .markdown-body {
-        width: 100%;
-        margin: 0 auto;
-        padding: 0.7em 1em;
-        font-size: 0.9em;
-      }
-
-      .markdown-body h1,
-      h2,
-      h3,
-      h4,
-      h5,
-      h6 {
-        margin-top: 0;
-      }
-
-      .markdown-body img {
-        max-width: 90%;
-        max-height: 800px;
-        width: auto;
-        height: auto;
-        display: block;
-        margin: 0 auto;
-      }
-
-      body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-
-      .header-wrapper {
-        position: fixed;
-        height: 3em;
-        width: 100%;
-        -moz-user-select: none;
-        -o-user-select: none;
-        -khtml-user-select: none;
-        -webkit-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-      }
-
-      .header {
-        padding: 0 1.8em 0 1em;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        border-bottom: solid rgb(218, 215, 215) 1px;
-      }
-
-      .logo {
-        margin-right: 0.3em;
-      }
-
-      .site {
-        white-space: nowrap;
-        font-weight: bold;
-      }
-
-      .nav {
-        width: 100%;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-
-      .nav-path,
-      .nav-arr {
-        font-size: 1em;
-        height: 1.5em;
-        margin-right: 0.3em;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        cursor: default;
-      }
-
-      #arrow-back,
-      #arrow-forward {
-        color: black;
-        cursor: pointer;
-      }
-
-      #arrow-back[disabled],
-      #arrow-forward[disabled] {
-        color: rgb(218, 215, 215);
-        cursor: initial;
-      }
-
-      #arrow-back:not([disabled]):active,
-      #arrow-forward:not([disabled]):active,
-      #main-page:active,
-      .nav-path:active,
-      .tree-node:active,
-      .row.file-wrapper:active {
-        color: rgb(90, 101, 133);
-        cursor: pointer;
-      }
-
-      .container {
-        position: fixed;
-        width: 100%;
-        height: calc(100% - 3em);
-        margin-top: 3em;
-      }
-
-      .main {
-        position: relative;
-        height: 100%;
-        width: 100%;
-      }
-
-      .left {
-        position: absolute;
-        width: 20%;
-        height: 100%;
-        font-size: 0.8em;
-        overflow: scroll;
-      }
-
-      .tree-node-wrapper {
-        display: table;
-        margin-left: 1.5em;
-      }
-
-      .tree-node {
-        display: flex;
-        align-items: center;
-      }
-
-      .tree-node > i {
-        text-align: center;
-        min-width: 0.8em;
-      }
-
-      .tree-node-name {
-        margin-left: 0.3em;
-        white-space: nowrap;
-      }
-
-      .right {
-        position: absolute;
-        width: 80%;
-        height: 100%;
-        margin-left: 20%;
-        overflow: scroll;
-      }
-
-      .row {
-        height: 2.5em;
-        padding: 0 0.8em 0 1em;
-        display: flex;
-        align-items: center;
-        border-bottom: solid rgb(218, 215, 215) 1px;
-      }
-
-      .row.file-wrapper {
-        font-size: 0.8em;
-        padding: 0 1em;
-        height: 2em;
-      }
-
-      .row.file-wrapper i {
-        min-width: 1em;
-      }
-
-      .file {
-        width: 100%;
-        display: flex;
-        align-items: center;
-      }
-
-      .name {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        width: 70%;
-        padding-left: 0.3em;
-      }
-
-      .list-header .name {
-        display: flex;
-        align-items: center;
-        width: calc(70% + 1.1em);
-        padding-left: 0;
-      }
-
-      .lastModifiedDateTime {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        justify-content: right;
-        width: 133px;
-      }
-
-      .size {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        margin-left: auto;
-        display: flex;
-        text-align: right;
-      }
-
-      .size .unit {
-        width: 1.7em;
-      }
-
-      #back-to-top {
-        position: fixed;
-        right: 1em;
-        bottom: 1em;
-        font-size: 2em;
-        color: rgb(90 90 90 / 30%);
-        cursor: pointer;
-      }
-
-      #back-to-top:active {
-        color: rgb(0 0 0);
-      }
-
-      @media (hover: hover) and (pointer: fine) {
-        .password button:hover,
-        .upload-entry-btn:hover,
-        .file-upload-chooser button:hover,
-        .file-upload-label:hover,
-        .btn:hover {
-          color: white;
-          background: rgb(218, 215, 215);
-        }
-
-        #arrow-back:not([disabled]):hover,
-        #arrow-forward:not([disabled]):hover,
-        #main-page:hover,
-        .nav-path:hover,
-        .tree-node:hover,
-        .list-header .file > div:hover,
-        .row.file-wrapper:hover {
-          color: rgb(90, 101, 133);
-          cursor: pointer;
-        }
-
-        #back-to-top:hover {
-          color: rgb(0 0 0);
-        }
-      }
-
-      @media screen and (max-width: 1000px) {
+      /* 响应式: 小屏幕隐藏左侧，右区全宽 */
+      @media screen and (max-width: 900px) {
         .left {
           display: none;
         }
-
         .right {
-          width: 100%;
-          margin-left: initial;
+          border-radius: 20px 20px 0 0;
         }
-      }
-
-      @media screen and (max-width: 800px) {
         .name {
           width: 60%;
         }
-
-        .list-header .name {
-          width: calc(60% + 1.1em);
-        }
-
-        .file-name {
-          overflow-x: auto;
-          height: 100%;
-        }
-      }
-
-      @media screen and (max-width: 600px) {
-        .name {
-          width: 70%;
-        }
-
         .lastModifiedDateTime {
-          display: none !important;
+          display: none;
         }
-
+        .size {
+          width: 40%;
+        }
+        .list-header .row .lastModifiedDateTime {
+          display: none;
+        }
         .header {
-          padding: 0 0.3em;
-        }
-
-        .row {
-          padding: 0 0.3em;
-        }
-
-        .row.file-wrapper {
-          padding: 0 0.3em;
-          height: 3em;
-        }
-
-        .markdown-body {
-          padding: 0.6em 0.3em;
-        }
-
-        .file-name {
-          padding: 1em 0.3em 0;
-        }
-
-        .content {
-          padding: 0 0.3em;
-        }
-
-        .btn.download {
-          margin-right: 0.3em;
-        }
-
-        .logo {
-          width: 1.6em;
-        }
-
-        #main-page {
-          margin-right: 0;
+          padding: 0 12px;
         }
       }
     </style>
+
     <script>
       async function sendRequest(method, url, data, headers, callback, error, times = 0) {
         const options = {
@@ -1601,6 +1498,9 @@
                         const pre = document.createElement('pre');
                         pre.style.background = 'rgb(247, 248, 250)';
                         pre.style.padding = '5px';
+                        pre.style.whiteSpace = 'pre-wrap';
+                        pre.style.wordBreak = 'break-word';
+                        pre.style.overflowWrap = 'break-word';
                         content.innerHTML = '';
                         content.append(pre);
                         pre.textContent = data;
@@ -2161,7 +2061,6 @@
 
       document.addEventListener('DOMContentLoaded', () => {
         document.title = window.GLOBAL_CONFIG.SITE_NAME;
-        document.querySelector('.site').textContent = window.GLOBAL_CONFIG.SITE_NAME;
         window.api = {
           root: '/',
           url: window.GLOBAL_CONFIG.SCF_GATEWAY + window.location.search,
@@ -2242,7 +2141,6 @@
         <div class="nav">
           <span id="path"> </span>
         </div>
-        <span class="site" id="nav-site">ONEDRIVE</span>
       </div>
     </div>
     <div class="container">
